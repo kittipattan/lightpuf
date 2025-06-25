@@ -1,78 +1,133 @@
 import json
-import mysql.connector
 import numpy as np
 from typing import Tuple
-import os
-from dotenv import load_dotenv
-
-class LocalServerPi():
-    def __init__(self):
-        self.CRPs = {}
+import sqlite3
+# import os
     
-    def registerCRP(
-        self, id, gid, challenge: np.ndarray, response: bytes
-    ):
-        self.CRPs[id] = (gid, challenge, response)
-    
-    def sendCRP(self, device_id):
-        device_crp = (device_id, self.CRPs[device_id][1], self.CRPs[device_id][2])
-        return device_crp
-    
-    def dropCRP(self):
-        return
-
+# SQLite
 class LocalServer:
-    def __init__(self):
-        load_dotenv()
-        self.__connection = mysql.connector.connect(
-            database=os.getenv("DB_NAME"),
-            host=os.getenv("DB_HOST"),
-            user=os.getenv("DB_USERNAME"),
-            password=os.getenv("DB_PASSWORD"),
-        )
-        self.__cursor = self.__connection.cursor(prepared=True)
+    def __init__(self, db_path="crps.db"):
+        self.__connection = sqlite3.connect(db_path)
+        self.__cursor = self.__connection.cursor()
         self.__db_table = "crps"
+        self.__create_table_if_not_exists()
 
-    def dropCRP(self):
-        stmt = f"DELETE FROM crps"
+    def __create_table_if_not_exists(self):
+        stmt = f"""
+        CREATE TABLE IF NOT EXISTS {self.__db_table} (
+            id INTEGER PRIMARY KEY,
+            gid INTEGER,
+            challenge TEXT,
+            response TEXT
+        )
+        """
         self.__cursor.execute(stmt)
         self.__connection.commit()
 
+    def dropCRP(self):
+        stmt = f"DELETE FROM {self.__db_table}"
+        self.__cursor.execute(stmt)
+        self.__connection.commit()
+
+    def __getResponse(self, iot_id: int):
+        stmt = f"SELECT response FROM {self.__db_table} WHERE id = ?"
+        self.__cursor.execute(stmt, (iot_id,))
+        row = self.__cursor.fetchone()
+        if row is None:
+            raise ValueError("ID not found.")
+        response = bytes.fromhex(row[0])
+        return response
+
+    def __getChallenge(self, iot_id: int):
+        stmt = f"SELECT challenge FROM {self.__db_table} WHERE id = ?"
+        self.__cursor.execute(stmt, (iot_id,))
+        row = self.__cursor.fetchone()
+        if row is None:
+            raise ValueError("ID not found.")
+        challenge = np.array(json.loads(row[0]))
+        return challenge
+
+    def registerCRP(self, id, gid, challenge: np.ndarray, response: bytes):
+        stmt = f"INSERT OR REPLACE INTO {self.__db_table} (id, gid, challenge, response) VALUES (?, ?, ?, ?)"
+        data = (id, gid, json.dumps(challenge.tolist()), response.hex())
+        self.__cursor.execute(stmt, data)
+        self.__connection.commit()
+        return self.__cursor.rowcount
+
+    def sendCRP(self, device_id):
+        challenge = self.__getChallenge(device_id)
+        response = self.__getResponse(device_id)
+        return (device_id, challenge, response)
+
+# class LocalServerPi():
+#     def __init__(self):
+#         self.CRPs = {}
+    
+#     def registerCRP(
+#         self, id, gid, challenge: np.ndarray, response: bytes
+#     ):
+#         self.CRPs[id] = (gid, challenge, response)
+    
+#     def sendCRP(self, device_id):
+#         device_crp = (device_id, self.CRPs[device_id][1], self.CRPs[device_id][2])
+#         return device_crp
+    
+#     def dropCRP(self):
+#         return
+
+# MySQL
+# class LocalServer:
+#     def __init__(self):
+#         load_dotenv()
+#         self.__connection = mysql.connector.connect(
+#             database=os.getenv("DB_NAME"),
+#             host=os.getenv("DB_HOST"),
+#             user=os.getenv("DB_USERNAME"),
+#             password=os.getenv("DB_PASSWORD"),
+#         )
+#         self.__cursor = self.__connection.cursor(prepared=True)
+#         self.__db_table = "crps"
+
+#     def dropCRP(self):
+#         stmt = f"DELETE FROM crps"
+#         self.__cursor.execute(stmt)
+#         self.__connection.commit()
+
+#     def __getResponse(self, iot_id: int):
+#         stmt = f"SELECT response FROM crps WHERE id = %s"
+#         self.__cursor.execute(stmt, (iot_id,))
+#         response = bytes.fromhex(self.__cursor.fetchall()[0][0])
+
+#         return response
+
+#     def __getChallenge(self, iot_id: int):
+#         stmt = f"SELECT challenge FROM crps WHERE id = %s"
+#         self.__cursor.execute(stmt, (iot_id,))
+#         challenge = np.array(json.loads(self.__cursor.fetchall()[0][0]))
+
+#         return challenge
+
+#     def registerCRP(
+#         self, id, gid, challenge: np.ndarray, response: bytes
+#     ):  # assume to perform over secure channel
+#         stmt = (
+#             f"INSERT INTO crps (id, gid, challenge, response) VALUES (%s, %s, %s, %s)"
+#         )
+#         data = (id, gid, json.dumps(challenge.tolist()), response.hex())
+#         self.__cursor.execute(stmt, data)
+#         self.__connection.commit()
+
+#         return self.__cursor.rowcount
+    
+#     def sendCRP(self, device_id):
+#         device_crp = (device_id, self.__getChallenge(device_id), self.__getResponse(device_id))
+#         return device_crp
+    
     # def __getGID(self, iot_id: int):
     #     stmt = f"SELECT gid FROM crps WHERE id = %s"
     #     self.__cursor.execute(stmt, (iot_id,))
 
     #     return self.__cursor.fetchone()[0]
-
-    def __getResponse(self, iot_id: int):
-        stmt = f"SELECT response FROM crps WHERE id = %s"
-        self.__cursor.execute(stmt, (iot_id,))
-        response = bytes.fromhex(self.__cursor.fetchall()[0][0])
-
-        return response
-
-    def __getChallenge(self, iot_id: int):
-        stmt = f"SELECT challenge FROM crps WHERE id = %s"
-        self.__cursor.execute(stmt, (iot_id,))
-        challenge = np.array(json.loads(self.__cursor.fetchall()[0][0]))
-
-        return challenge
-
-    def registerCRP(
-        self, id, gid, challenge: np.ndarray, response: bytes
-    ):  # assume to perform over secure channel
-        stmt = (
-            f"INSERT INTO crps (id, gid, challenge, response) VALUES (%s, %s, %s, %s)"
-        )
-        data = (id, gid, json.dumps(challenge.tolist()), response.hex())
-        self.__cursor.execute(stmt, data)
-        self.__connection.commit()
-
-        return self.__cursor.rowcount
-    
-    def sendCRP(self, device_id):
-        device_crp = (device_id, self.__getChallenge(device_id), self.__getResponse(device_id))
-        return device_crp
 
     # def genEnrollReq(self, id: int, pairing_id: int):
     #     challenge: np.ndarray = np.array(json.loads(self.__getChallengeJSON(id)))
