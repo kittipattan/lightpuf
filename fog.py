@@ -7,20 +7,16 @@ from cryptography.hazmat.backends import default_backend
 from typing import List, Tuple
 from iot_rasppi import IoTPi
 from leader_rasppi import LeaderPi
-import json
 import os
-import secrets
-from dotenv import load_dotenv
-from azure.storage.blob import BlobServiceClient
-import json
 import numpy as np
-import blake3 as b3
 import hmac
 import hashlib
 import time
 import struct
-from threading import Thread
 import pickle
+# import json
+# from dotenv import load_dotenv
+# from azure.storage.blob import BlobServiceClient
 
 class Fog:
     def __init__(self):
@@ -276,29 +272,29 @@ class Fog:
         except KeyError:
             self.aggregatedData[iot.gid] = [iot.data.decode()]
 
-    def uploadToCloud(self, fog_nodes, devices_per_node, fog_id, gid, aggregated_data):
-        aggregated_iot_data = {
-            "fog_node_id": fog_id,
-            "aggregated_data": aggregated_data,
-        }
+    # def uploadToCloud(self, fog_nodes, devices_per_node, fog_id, gid, aggregated_data):
+    #     aggregated_iot_data = {
+    #         "fog_node_id": fog_id,
+    #         "aggregated_data": aggregated_data,
+    #     }
 
-        try:
-            load_dotenv()
+    #     try:
+    #         load_dotenv()
 
-            # initialize a connection to Azure Blob Storage
-            connect_str = os.getenv("AZURE_API")  # to add connection
-            blob_service_client = BlobServiceClient.from_connection_string(connect_str)
-            container_name = "iiot-data-authentication-to-cloud"
-            blob_name = f"our_scheme/fog_no_{fog_nodes}/device_no_{devices_per_node}/aggregated_data_{gid}.json"
+    #         # initialize a connection to Azure Blob Storage
+    #         connect_str = os.getenv("AZURE_API")  # to add connection
+    #         blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+    #         container_name = "iiot-data-authentication-to-cloud"
+    #         blob_name = f"our_scheme/fog_no_{fog_nodes}/device_no_{devices_per_node}/aggregated_data_{gid}.json"
 
-            # convert aggregated data to JSON
-            data = json.dumps(aggregated_iot_data)
-            # print(f"\n{data}\n")
+    #         # convert aggregated data to JSON
+    #         data = json.dumps(aggregated_iot_data)
+    #         # print(f"\n{data}\n")
 
-            # upload data
-            blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
-            blob_client.upload_blob(data, overwrite=True)
-            print(f"Uploaded aggregated data of fog node {gid} to Azure Blob Storage.")
+    #         # upload data
+    #         blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
+    #         blob_client.upload_blob(data, overwrite=True)
+    #         print(f"Uploaded aggregated data of fog node {gid} to Azure Blob Storage.")
 
-        except Exception as e:
-            print(f"Error uploading data for fog node: {e}")
+    #     except Exception as e:
+    #         print(f"Error uploading data for fog node: {e}")

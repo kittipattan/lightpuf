@@ -3,14 +3,11 @@ from iot_rasppi import IoTPi
 from server import LocalServer
 from fog import Fog
 from pypuf.io import random_inputs
-import os
 from typing import List
 from threading import Thread
 import random
 import string
-import math
-import timeit
-from utils.measurement import measure_computation_cost
+from utils.measurement import measure_computation_cost, measure_throughput
 
 
 def initialize_group(
@@ -128,7 +125,7 @@ def main(fog_nodes, devices_per_node):
             authen_iot_fog(group, fog)
 
         # Data Authentication
-        # measure_computation_cost(test_data_authentication, "Data Authentication", 1000)
+        measure_computation_cost(test_data_authentication, "Data Authentication", 1000)
         
         def test_throughput():
             authen_leader_fog(leader, fog)
@@ -137,35 +134,14 @@ def main(fog_nodes, devices_per_node):
             authen_iot_fog(group, fog)
 
         # Throughput
-        # r = 10
-        # batch_size = 50
-        # print(f"Our - Throughput")
-        # for no_request in [500]:
-        #     threads = []
-        #     throughput = 0
-        #     for _ in range(r):
-        #         no_group = math.ceil(no_request/batch_size)
-        #         start_time = timeit.default_timer()
-        #         for _ in range(no_group):
-        #             t = Thread(target=lambda: test_throughput())
-        #             threads.append(t)
-        #             t.start()
-        #         for t in threads:
-        #             t.join()
-        #         end_time = timeit.default_timer()
-        #         total_time = end_time - start_time
-        #         try:
-        #             throughput += no_request / total_time
-        #         except:
-        #             throughput += no_request
-        #     print(f"Concurrent devices: {no_request}, Throughput: {throughput/r:.2f} transactions/sec")
+        measure_throughput(test_throughput, "Throughput", [50])
         
-        # # measure_computation_cost(authen_iot_fog, "Authen IoT-Fog", 100, group, fog)
+        # measure_computation_cost(authen_iot_fog, "Authen IoT-Fog", 100, group, fog)
 
         # print(f"All {devices_per_node} IoTs data authen success")
 
     # Cloud Uploading
-    for group, fog in zip(IoTs, fogs):
+    # for group, fog in zip(IoTs, fogs):
         # gid = group[0].gid
         # fog_id = gid
         # upload_threads = []
@@ -178,11 +154,10 @@ def main(fog_nodes, devices_per_node):
 
         # for t in upload_threads:
         #     t.join()
-        pass
 
     return 0
 
 
 if __name__ == "__main__":
-    for n in [100]:
+    for n in [50]:
         main(1,n)

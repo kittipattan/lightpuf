@@ -1,9 +1,7 @@
 from utils.nizkp import schnorr_nizk_proof, schnorr_nizk_verify
 from iot_rasppi import IoTPi
-import secrets
 from utils.aes256 import AESCBCCipher, AESGCMCipher
 from typing import Tuple
-import blake3 as b3
 import os
 import time
 import struct

@@ -7,7 +7,6 @@ from ecdsa import SigningKey, VerifyingKey, NIST256p, ECDH
 import numpy as np
 from typing import Tuple
 import time
-import blake3 as b3
 import hmac
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
